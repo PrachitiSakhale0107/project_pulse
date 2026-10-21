@@ -1,0 +1,464 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1120">
+  <meta name="description" content="KanbanFlow team workspace and project management dashboard">
+  <title>Dashboard | KanbanFlow</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="app-page">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="dashboard.html">
+      <span class="brand-mark">K</span>
+      <span>KanbanFlow</span>
+    </a>
+
+    <div class="workspace-label">WORKSPACE</div>
+
+    <nav class="side-nav" aria-label="Main navigation">
+      <button class="nav-item active" type="button" data-view="board">
+        <span aria-hidden="true">▦</span> Kanban board
+      </button>
+
+      <button class="nav-item" type="button" data-view="analytics">
+        <span aria-hidden="true">▥</span> Analytics
+      </button>
+
+      <button class="nav-item" type="button" data-view="team" id="teamNav">
+        <span aria-hidden="true">♙</span> Team management
+      </button>
+
+      <button class="nav-item hidden" type="button" data-view="faculty" id="facultyNav">
+        <span aria-hidden="true">✓</span>
+        Faculty approval
+        <span id="pendingFacultyCount" class="count">0</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="help-card">
+        <span class="help-icon" aria-hidden="true">✦</span>
+        <strong>Keep work flowing</strong>
+        <p>Small steps. Clear ownership. Better outcomes.</p>
+      </div>
+
+      <button class="nav-item logout-btn" id="logoutButton" type="button">
+        <span aria-hidden="true">↪</span> Sign out
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <button
+        class="mobile-menu"
+        id="mobileMenu"
+        type="button"
+        aria-label="Toggle navigation"
+        aria-controls="sidebar"
+        aria-expanded="false"
+      >☰</button>
+
+      <div class="topbar-heading">
+        <span class="eyebrow">TEAM WORKSPACE</span>
+        <h1 id="pageTitle">Kanban board</h1>
+      </div>
+
+      <div class="profile-area">
+        <div class="avatar" id="userAvatar" aria-hidden="true">U</div>
+        <div class="profile-details">
+          <strong id="userName">Loading...</strong>
+          <small id="userRole">Member</small>
+        </div>
+      </div>
+    </header>
+
+    <!-- KANBAN BOARD -->
+    <section class="view active" id="boardView">
+
+      <div class="welcome-row">
+        <div>
+          <h2>Project overview</h2>
+          <p class="muted">Keep every task moving in the right direction.</p>
+        </div>
+
+        <button class="btn btn-primary" id="newTaskButton" type="button">
+          ＋ New task
+        </button>
+      </div>
+
+      <div class="stats-grid">
+        <article class="stat-card">
+          <div class="stat-top">
+            <span>Total tasks</span>
+            <span class="stat-icon purple">▦</span>
+          </div>
+          <strong id="statTotal">0</strong>
+          <small>Tasks in your workspace</small>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <span>In progress</span>
+            <span class="stat-icon blue">◷</span>
+          </div>
+          <strong id="statDoing">0</strong>
+          <small>Currently being worked on</small>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <span>Needs review</span>
+            <span class="stat-icon orange">✓</span>
+          </div>
+          <strong id="statReview">0</strong>
+          <small>Waiting for a decision</small>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <span>Completed</span>
+            <span class="stat-icon green">↗</span>
+          </div>
+          <strong id="statDone">0</strong>
+          <small>Successfully completed</small>
+        </article>
+      </div>
+
+      <div class="board-heading">
+        <div>
+          <h2>Task board</h2>
+          <p class="muted">Track tasks through each stage of the workflow.</p>
+        </div>
+
+        <button class="btn btn-secondary" id="refreshButton" type="button">
+          ↻ Refresh
+        </button>
+      </div>
+
+      <div class="board" id="kanbanBoard">
+
+        <section class="kanban-column" data-status="BACKLOG">
+          <div class="column-head">
+            <span class="column-dot backlog"></span>
+            <h3>Backlog</h3>
+            <span class="count" id="countBacklog">0</span>
+          </div>
+          <div class="task-list" id="listBacklog"></div>
+        </section>
+
+        <section class="kanban-column" data-status="DOING">
+          <div class="column-head">
+            <span class="column-dot doing"></span>
+            <h3>Doing</h3>
+            <span class="count" id="countDoing">0</span>
+          </div>
+          <div class="task-list" id="listDoing"></div>
+        </section>
+
+        <section class="kanban-column" data-status="REVIEW">
+          <div class="column-head">
+            <span class="column-dot review"></span>
+            <h3>Review</h3>
+            <span class="count" id="countReview">0</span>
+          </div>
+          <div class="task-list" id="listReview"></div>
+        </section>
+
+        <section class="kanban-column" data-status="DONE">
+          <div class="column-head">
+            <span class="column-dot done"></span>
+            <h3>Done</h3>
+            <span class="count" id="countDone">0</span>
+          </div>
+          <div class="task-list" id="listDone"></div>
+        </section>
+
+      </div>
+    </section>
+
+    <!-- ANALYTICS -->
+    <section class="view" id="analyticsView">
+
+      <div class="welcome-row">
+        <div>
+          <h2>Team analytics</h2>
+          <p class="muted">A quick look at delivery and workflow health.</p>
+        </div>
+
+        <button class="btn btn-secondary" id="analyticsRefresh" type="button">
+          ↻ Refresh metrics
+        </button>
+      </div>
+
+      <div class="stats-grid analytics-stats">
+        <article class="stat-card">
+          <span class="muted">Completion rate</span>
+          <strong id="completionRate">0%</strong>
+          <small>Tasks in Done</small>
+        </article>
+
+        <article class="stat-card">
+          <span class="muted">Overdue tasks</span>
+          <strong id="overdueTasks">0</strong>
+          <small>Past due and not done</small>
+        </article>
+
+        <article class="stat-card">
+          <span class="muted">Throughput (30 days)</span>
+          <strong id="throughput">0</strong>
+          <small>Tasks completed</small>
+        </article>
+
+        <article class="stat-card">
+          <span class="muted">Average cycle time</span>
+          <strong id="cycleTime">—</strong>
+          <small>Days from Doing to Done</small>
+        </article>
+      </div>
+
+      <div class="analytics-layout">
+        <article class="panel">
+          <h3>Tasks by status</h3>
+          <div id="statusChart" class="bar-chart"></div>
+        </article>
+
+        <article class="panel">
+          <h3>Workflow health</h3>
+          <p class="muted">
+            Keep the Doing column manageable and review submitted work regularly.
+          </p>
+
+          <div class="health-line">
+            <span>Work in progress</span>
+            <strong id="wipValue">0</strong>
+          </div>
+
+          <div class="progress-track">
+            <div id="wipBar" class="progress-fill"></div>
+          </div>
+
+          <div class="health-line">
+            <span>Tasks waiting for review</span>
+            <strong id="reviewValue">0</strong>
+          </div>
+
+          <div class="progress-track">
+            <div id="reviewBar" class="progress-fill purple-fill"></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- TEAM MANAGEMENT -->
+    <section class="view" id="teamView">
+
+      <div class="welcome-row">
+        <div>
+          <h2>Team Management</h2>
+          <p class="muted">
+            View team member contributions and workspace users.
+          </p>
+        </div>
+      </div>
+
+      <!-- WORKSPACE USERS -->
+      <div class="panel table-panel">
+        <h3>Workspace Users</h3>
+        <p class="muted">View registered users and their workspace roles.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Role</th>
+              </tr>
+            </thead>
+            <tbody id="teamTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- FACULTY APPROVAL -->
+    <section class="view" id="facultyView">
+
+      <div class="welcome-row">
+        <div>
+          <h2>Faculty approval</h2>
+          <p class="muted">
+            Review faculty registrations before allowing them to sign in.
+          </p>
+        </div>
+
+        <button class="btn btn-secondary" id="refreshFacultyButton" type="button">
+          ↻ Refresh registrations
+        </button>
+      </div>
+
+      <div class="panel">
+        <h3>Pending registrations</h3>
+        <p class="muted">
+          Approve a registration to enable that faculty account.
+        </p>
+
+        <p
+          id="pendingFacultyMessage"
+          class="message hidden"
+          role="status"
+          aria-live="polite"
+        ></p>
+
+        <div id="pendingFacultyList" class="faculty-pending-list"></div>
+      </div>
+
+    </section>
+
+    <!-- GLOBAL TOAST -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  </main>
+
+  <!-- CREATE / EDIT TASK DIALOG -->
+  <dialog id="taskDialog" class="task-dialog" aria-labelledby="taskDialogTitle">
+    <form id="taskForm">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">WORK ITEM</span>
+          <h2 id="taskDialogTitle">Create a task</h2>
+        </div>
+
+        <button
+          type="button"
+          class="icon-button"
+          id="closeTaskDialog"
+          aria-label="Close task dialog"
+        >×</button>
+      </div>
+
+      <input type="hidden" id="taskId">
+
+      <label for="taskTitle">Task title</label>
+      <input
+        id="taskTitle"
+        name="taskTitle"
+        maxlength="140"
+        required
+        placeholder="e.g. Design project dashboard"
+      >
+
+      <label for="taskDescription">Description</label>
+      <textarea
+        id="taskDescription"
+        name="taskDescription"
+        rows="3"
+        maxlength="2000"
+        placeholder="What needs to be done?"
+      ></textarea>
+
+      <div class="form-grid">
+        <div>
+          <label for="taskPriority">Priority</label>
+          <select id="taskPriority" name="taskPriority">
+            <option value="LOW">Low</option>
+            <option value="MEDIUM" selected>Medium</option>
+            <option value="HIGH">High</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="taskDueDate">Due date</label>
+          <input id="taskDueDate" name="taskDueDate" type="date">
+        </div>
+      </div>
+
+      <label for="taskAssignee">Assign to</label>
+      <select id="taskAssignee" name="taskAssignee">
+        <option value="">Unassigned</option>
+      </select>
+
+      <label for="taskStatus">Status</label>
+      <select id="taskStatus" name="taskStatus">
+        <option value="BACKLOG">Backlog</option>
+        <option value="DOING">Doing</option>
+        <option value="REVIEW">Review</option>
+        <option value="DONE">Done</option>
+      </select>
+
+      <p
+        id="taskFormError"
+        class="message error hidden"
+        role="alert"
+        aria-live="assertive"
+      ></p>
+
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" id="cancelTaskButton">
+          Cancel
+        </button>
+
+        <button class="btn btn-primary" type="submit" id="saveTaskButton">
+          Save task
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- TASK REVIEW DIALOG -->
+  <dialog id="reviewDialog" class="task-dialog" aria-labelledby="reviewDialogTitle">
+    <form id="reviewForm">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">TASK REVIEW</span>
+          <h2 id="reviewDialogTitle">Review submission</h2>
+        </div>
+
+        <button
+          type="button"
+          class="icon-button"
+          id="closeReviewDialog"
+          aria-label="Close review dialog"
+        >×</button>
+      </div>
+
+      <input type="hidden" id="reviewTaskId">
+
+      <p id="reviewTaskTitle" class="review-task-title"></p>
+
+      <label for="reviewComment">Review comment</label>
+      <textarea
+        id="reviewComment"
+        name="reviewComment"
+        rows="3"
+        maxlength="1000"
+        placeholder="Feedback for the team member (optional)"
+      ></textarea>
+
+      <div class="dialog-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          id="requestChangesButton"
+        >Request changes</button>
+
+        <button type="submit" class="btn btn-primary">
+          ✓ Approve task
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

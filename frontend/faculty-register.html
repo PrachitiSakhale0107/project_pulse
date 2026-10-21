@@ -1,0 +1,93 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KanbanFlow | Faculty Registration</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-page">
+  <main class="login-shell">
+
+    <section class="login-visual">
+      <div class="brand">
+        <span class="brand-mark">K</span>
+        <span>KanbanFlow</span>
+      </div>
+
+      <div class="visual-copy">
+        <span class="eyebrow">FACULTY WORKSPACE</span>
+        <h1>Guide teams.<br><span>Build progress.</span></h1>
+        <p>Register as faculty to review team tasks, guide members, and track project progress.</p>
+
+        <div class="mini-flow">
+          <span>Backlog</span><b>→</b>
+          <span>Doing</span><b>→</b>
+          <span>Review</span><b>→</b>
+          <span>Done</span>
+        </div>
+      </div>
+
+      <div class="visual-footer">Plan smarter. Collaborate better.</div>
+    </section>
+
+    <section class="login-panel">
+      <div class="mobile-brand brand">
+        <span class="brand-mark">K</span>
+        <span>KanbanFlow</span>
+      </div>
+
+      <div class="login-card">
+        <span class="eyebrow">FACULTY ACCESS</span>
+        <h2>Faculty registration</h2>
+        <p class="muted">
+          Create your account. An Admin must approve it before you can sign in.
+        </p>
+
+        <form id="facultyRegisterForm">
+          <label for="facultyName">Full name</label>
+          <input id="facultyName" name="name" type="text"
+                 autocomplete="name" maxlength="100"
+                 placeholder="Enter your full name" required>
+
+          <label for="facultyEmail">Email address</label>
+          <input id="facultyEmail" name="email" type="email"
+                 autocomplete="email" maxlength="150"
+                 placeholder="you@example.com" required>
+
+          <label for="facultyPassword">Password</label>
+          <input id="facultyPassword" name="password" type="password"
+                 autocomplete="new-password"
+                 minlength="6" maxlength="100"
+                 placeholder="At least 6 characters" required>
+
+          <div id="facultyRegisterMessage"
+               class="message error hidden"
+               role="alert"></div>
+
+          <button class="btn btn-primary btn-wide"
+                  type="submit" id="facultyRegisterButton">
+            Submit registration <span>→</span>
+          </button>
+        </form>
+
+        <div class="register-link">
+          Register as a member?
+          <a href="register.html">Member registration</a>
+        </div>
+
+        <div class="register-link">
+          Already have an account?
+          <a href="index.html">Sign in</a>
+        </div>
+      </div>
+
+      <footer>KanbanFlow · Faculty access request</footer>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
