@@ -1,7 +1,9 @@
 
 package com.kanban.service;
 
+import com.kanban.model.Role;
 import com.kanban.repository.UserRepository;
+
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
@@ -26,10 +28,14 @@ public class CustomUserDetailsService implements UserDetailsService {
                         new UsernameNotFoundException(
                                 "Invalid email or password"));
 
+        // Only Faculty accounts require Admin approval.
+        boolean accountEnabled =
+                user.getRole() != Role.FACULTY || user.isApproved();
+
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
                 user.getPassword(),
-                user.isApproved(),
+                accountEnabled,
                 true,
                 true,
                 true,

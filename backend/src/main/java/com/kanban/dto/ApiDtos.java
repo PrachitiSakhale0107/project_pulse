@@ -3,9 +3,9 @@ package com.kanban.dto;
 
 import com.kanban.model.*;
 import jakarta.validation.constraints.*;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
 public final class ApiDtos {
 
@@ -17,7 +17,7 @@ public final class ApiDtos {
         @NotBlank String password
     ) {}
 
-    // User registration request
+    // Individual member or Faculty registration
     public record RegisterRequest(
         @NotBlank @Size(max = 100) String name,
         @Email @NotBlank @Size(max = 150) String email,
@@ -43,40 +43,6 @@ public final class ApiDtos {
         }
     }
 
-    // Create team request
-    public record TeamRequest(
-        @NotBlank @Size(max = 100) String name,
-        @NotNull Long facultyId,
-        @NotEmpty List<@NotNull Long> memberIds
-    ) {}
-
-    // Team response
-    public record TeamResponse(
-        Long id,
-        String name,
-        Long facultyId,
-        String facultyName,
-        List<Long> memberIds,
-        List<String> memberNames
-    ) {
-        public static TeamResponse from(Team team) {
-            return new TeamResponse(
-                team.getId(),
-                team.getName(),
-                team.getFaculty().getId(),
-                team.getFaculty().getName(),
-                team.getMembers()
-                    .stream()
-                    .map(AppUser::getId)
-                    .toList(),
-                team.getMembers()
-                    .stream()
-                    .map(AppUser::getName)
-                    .toList()
-            );
-        }
-    }
-
     // Create or update task request
     public record TaskRequest(
         @NotBlank @Size(max = 140) String title,
@@ -84,13 +50,19 @@ public final class ApiDtos {
         Priority priority,
         LocalDate dueDate,
         Long assigneeId,
-        TaskStatus status,
-        Long teamId
+        TaskStatus status
     ) {}
 
     // Update task status request
     public record StatusRequest(
         @NotNull TaskStatus status
+    ) {}
+
+    // Member task evidence submission request
+    public record EvidenceSubmissionRequest(
+        @NotBlank(message = "Evidence is required before submitting for review.")
+        @Size(max = 5000, message = "Evidence cannot exceed 5000 characters.")
+        String evidence
     ) {}
 
     // Faculty task review request
@@ -99,7 +71,7 @@ public final class ApiDtos {
         @Size(max = 1000) String comment
     ) {}
 
-    // Task response, including its team information
+    // Task response
     public record TaskResponse(
         Long id,
         String title,
@@ -107,8 +79,6 @@ public final class ApiDtos {
         TaskStatus status,
         Priority priority,
         LocalDate dueDate,
-        Long teamId,
-        String teamName,
         Long assigneeId,
         String assigneeName,
         Long createdById,
@@ -117,7 +87,8 @@ public final class ApiDtos {
         LocalDateTime updatedAt,
         LocalDateTime firstStartedAt,
         LocalDateTime submittedAt,
-        LocalDateTime completedAt
+        LocalDateTime completedAt,
+        String evidence
     ) {
         public static TaskResponse from(KanbanTask t) {
             return new TaskResponse(
@@ -127,35 +98,16 @@ public final class ApiDtos {
                 t.getStatus(),
                 t.getPriority(),
                 t.getDueDate(),
-
-                // Team information
-                t.getTeam() == null
-                    ? null
-                    : t.getTeam().getId(),
-
-                t.getTeam() == null
-                    ? null
-                    : t.getTeam().getName(),
-
-                // Assignee information
-                t.getAssignee() == null
-                    ? null
-                    : t.getAssignee().getId(),
-
-                t.getAssignee() == null
-                    ? null
-                    : t.getAssignee().getName(),
-
-                // Creator information
-                t.getCreatedBy().getId(),
-                t.getCreatedBy().getName(),
-
-                // Task timestamps
+                t.getAssignee() == null ? null : t.getAssignee().getId(),
+                t.getAssignee() == null ? null : t.getAssignee().getName(),
+                t.getCreatedBy() == null ? null : t.getCreatedBy().getId(),
+                t.getCreatedBy() == null ? null : t.getCreatedBy().getName(),
                 t.getCreatedAt(),
                 t.getUpdatedAt(),
                 t.getFirstStartedAt(),
                 t.getSubmittedAt(),
-                t.getCompletedAt()
+                t.getCompletedAt(),
+                t.getEvidence()
             );
         }
     }

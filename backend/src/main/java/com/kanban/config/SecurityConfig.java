@@ -26,7 +26,9 @@ import java.util.List;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
+
         http
             .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
@@ -35,16 +37,21 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/login",
                     "/api/auth/register",
+                    "/api/auth/register-team",
                     "/api/auth/register-faculty",
                     "/error"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                session.sessionCreationPolicy(
+                    SessionCreationPolicy.IF_REQUIRED
+                )
             )
             .securityContext(context ->
-                context.securityContextRepository(securityContextRepository())
+                context.securityContextRepository(
+                    securityContextRepository()
+                )
             )
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())

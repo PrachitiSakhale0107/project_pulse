@@ -1,124 +1,202 @@
-```html
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>KanbanFlow | Create Account</title>
+  <meta name="theme-color" content="#0b1120">
+  <meta
+    name="description"
+    content="Register for ProjectPulse to manage projects, collaborate with teams, and track tasks."
+  >
+  <title>ProjectPulse | Registration</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body class="login-page">
   <main class="login-shell">
 
+    <!-- LEFT: BRANDING AND INTRODUCTION -->
     <section class="login-visual">
       <div class="brand">
-        <span class="brand-mark">K</span>
-        <span>KanbanFlow</span>
+        <span class="brand-mark">P</span>
+        <span>Project Pulse</span>
       </div>
 
       <div class="visual-copy">
-        <span class="eyebrow">JOIN YOUR WORKSPACE</span>
-        <h1>Great work<br><span>starts together.</span></h1>
-        <p>Create an account to organise tasks, collaborate with your team, and track progress.</p>
+        <span class="eyebrow">YOUR TEAM. YOUR WORKSPACE.</span>
+
+        <h1>
+          Great work<br>
+          <span>starts together.</span>
+        </h1>
+
+        <p>
+          Organise tasks, collaborate with your team, and track
+          every project from Backlog to Done.
+        </p>
 
         <div class="mini-flow">
-          <span>Backlog</span><b>→</b>
-          <span>Doing</span><b>→</b>
-          <span>Review</span><b>→</b>
+          <span>Backlog</span>
+          <b>→</b>
+          <span>Doing</span>
+          <b>→</b>
+          <span>Review</span>
+          <b>→</b>
           <span>Done</span>
         </div>
       </div>
 
-      <div class="visual-footer">Plan smarter. Collaborate better.</div>
+      <div class="visual-footer">
+        Plan smarter. Collaborate better.
+      </div>
     </section>
 
+    <!-- RIGHT: REGISTRATION FORMS -->
     <section class="login-panel">
+
       <div class="mobile-brand brand">
-        <span class="brand-mark">K</span>
-        <span>KanbanFlow</span>
+        <span class="brand-mark">P</span>
+        <span>ProjectPulse</span>
       </div>
 
+      <!-- TEAM MEMBER REGISTRATION -->
       <div class="login-card">
-        <span class="eyebrow">GET STARTED</span>
-        <h2>Create your account</h2>
-        <p class="muted">Choose your account type and enter your details.</p>
+        <span class="eyebrow">TEAM MEMBER</span>
+        <h2>Create an account</h2>
 
-        <div class="register-link">
-          <a href="#memberRegistration">Member Registration</a>
-          &nbsp; | &nbsp;
-          <a href="#facultyRegistration">Faculty Registration</a>
-        </div>
+        <p class="muted">
+          Register with your own details. After signing in,
+          join your existing team using its team code.
+        </p>
 
         <form id="registerForm">
-          <h3 id="memberRegistration">Member Registration</h3>
 
           <label for="name">Full name</label>
-          <input id="name" name="name" type="text"
-                 autocomplete="name" maxlength="100"
-                 placeholder="Enter your full name" required>
+          <input
+            id="name"
+            name="name"
+            type="text"
+            autocomplete="name"
+            maxlength="100"
+            placeholder="Enter your full name"
+            required
+          >
 
           <label for="email">Email address</label>
-          <input id="email" name="email" type="email"
-                 autocomplete="email" maxlength="150"
-                 placeholder="you@example.com" required>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            maxlength="150"
+            placeholder="you@example.com"
+            required
+          >
 
           <label for="password">Password</label>
-          <input id="password" name="password" type="password"
-                 autocomplete="new-password"
-                 minlength="6" maxlength="100"
-                 placeholder="At least 6 characters" required>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autocomplete="new-password"
+            minlength="6"
+            maxlength="100"
+            placeholder="At least 6 characters"
+            required
+          >
 
-          <div id="registerError" class="message error hidden"
-               role="alert"></div>
+          <div
+            id="registerError"
+            class="message error hidden"
+            role="status"
+            aria-live="polite"
+          ></div>
 
-          <button class="btn btn-primary btn-wide"
-                  type="submit" id="registerButton">
-            Create member account
+          <button
+            class="btn btn-primary btn-wide"
+            type="submit"
+            id="registerButton"
+          >
+            Create account <span>→</span>
           </button>
         </form>
-
-        <hr>
-
-        <form id="facultyRegisterForm">
-          <h3 id="facultyRegistration">Faculty Registration</h3>
-          <p class="muted">Faculty accounts require Admin approval before access is granted.</p>
-
-          <label for="facultyName">Full name</label>
-          <input id="facultyName" name="facultyName" type="text"
-                 autocomplete="name" maxlength="100"
-                 placeholder="Enter your full name" required>
-
-          <label for="facultyEmail">Email address</label>
-          <input id="facultyEmail" name="facultyEmail" type="email"
-                 autocomplete="email" maxlength="150"
-                 placeholder="faculty@example.com" required>
-
-          <label for="facultyPassword">Password</label>
-          <input id="facultyPassword" name="facultyPassword" type="password"
-                 autocomplete="new-password"
-                 minlength="6" maxlength="100"
-                 placeholder="At least 6 characters" required>
-
-          <div id="facultyRegisterMessage" class="message error hidden"
-               role="alert" aria-live="polite"></div>
-
-          <button class="btn btn-primary btn-wide"
-                  type="submit" id="facultyRegisterButton">
-            Submit registration
-          </button>
-        </form>
-
-        <div class="register-link">
-          Already have an account?
-          <a href="index.html">Sign in</a>
-        </div>
       </div>
 
-      <footer>KanbanFlow · Team project management</footer>
-    </section>
+      <!-- FACULTY REGISTRATION -->
+      <div class="login-card">
+        <span class="eyebrow">FACULTY</span>
+        <h2>Faculty registration</h2>
 
+        <p class="muted">
+          Create a faculty account to assign tasks to teams,
+          review submitted work, and approve completed tasks.
+        </p>
+
+        <form id="facultyRegisterForm">
+
+          <label for="facultyName">Full name</label>
+          <input
+            id="facultyName"
+            name="name"
+            type="text"
+            autocomplete="name"
+            maxlength="100"
+            placeholder="Enter your full name"
+            required
+          >
+
+          <label for="facultyEmail">Email address</label>
+          <input
+            id="facultyEmail"
+            name="email"
+            type="email"
+            autocomplete="email"
+            maxlength="150"
+            placeholder="faculty@example.com"
+            required
+          >
+
+          <label for="facultyPassword">Password</label>
+          <input
+            id="facultyPassword"
+            name="password"
+            type="password"
+            autocomplete="new-password"
+            minlength="6"
+            maxlength="100"
+            placeholder="At least 6 characters"
+            required
+          >
+
+          <div
+            id="facultyRegisterMessage"
+            class="message error hidden"
+            role="status"
+            aria-live="polite"
+          ></div>
+
+          <button
+            class="btn btn-primary btn-wide"
+            type="submit"
+            id="facultyRegisterButton"
+          >
+            Register as faculty <span>→</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- SIGN-IN LINK -->
+      <div class="register-link">
+        Already have an account?
+        <a href="index.html">Sign in</a>
+      </div>
+
+      <footer>ProjectPulse · Team project management</footer>
+
+    </section>
   </main>
 
+  <!-- Keep your existing JavaScript file -->
   <script src="app.js"></script>
 </body>
 </html>

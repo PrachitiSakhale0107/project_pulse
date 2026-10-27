@@ -5,17 +5,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1120">
-  <meta name="description" content="KanbanFlow team workspace and project management dashboard">
-  <title>Dashboard | KanbanFlow</title>
+  <meta name="description" content="ProjectPulse team workspace and project management dashboard">
+  <title>Dashboard | ProjectPulse</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body class="app-page">
 
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <a class="brand" href="dashboard.html">
-      <span class="brand-mark">K</span>
-      <span>KanbanFlow</span>
+      <span class="brand-mark">P</span>
+      <span>ProjectPulse</span>
     </a>
 
     <div class="workspace-label">WORKSPACE</div>
@@ -33,7 +34,12 @@
         <span aria-hidden="true">♙</span> Team management
       </button>
 
-      <button class="nav-item hidden" type="button" data-view="faculty" id="facultyNav">
+      <button
+        class="nav-item hidden"
+        type="button"
+        data-view="faculty"
+        id="facultyNav"
+      >
         <span aria-hidden="true">✓</span>
         Faculty approval
         <span id="pendingFacultyCount" class="count">0</span>
@@ -270,7 +276,6 @@
         </div>
       </div>
 
-      <!-- WORKSPACE USERS -->
       <div class="panel table-panel">
         <h3>Workspace Users</h3>
         <p class="muted">View registered users and their workspace roles.</p>
@@ -288,10 +293,9 @@
           </table>
         </div>
       </div>
-
     </section>
 
-    <!-- FACULTY APPROVAL -->
+    <!-- FACULTY REGISTRATION APPROVAL -->
     <section class="view" id="facultyView">
 
       <div class="welcome-row">
@@ -302,7 +306,11 @@
           </p>
         </div>
 
-        <button class="btn btn-secondary" id="refreshFacultyButton" type="button">
+        <button
+          class="btn btn-secondary"
+          id="refreshFacultyButton"
+          type="button"
+        >
           ↻ Refresh registrations
         </button>
       </div>
@@ -322,7 +330,6 @@
 
         <div id="pendingFacultyList" class="faculty-pending-list"></div>
       </div>
-
     </section>
 
     <!-- GLOBAL TOAST -->
@@ -333,6 +340,7 @@
   <!-- CREATE / EDIT TASK DIALOG -->
   <dialog id="taskDialog" class="task-dialog" aria-labelledby="taskDialogTitle">
     <form id="taskForm">
+
       <div class="dialog-head">
         <div>
           <span class="eyebrow">WORK ITEM</span>
@@ -404,20 +412,101 @@
       ></p>
 
       <div class="dialog-actions">
-        <button type="button" class="btn btn-secondary" id="cancelTaskButton">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          id="cancelTaskButton"
+        >
           Cancel
         </button>
 
-        <button class="btn btn-primary" type="submit" id="saveTaskButton">
+        <button
+          class="btn btn-primary"
+          type="submit"
+          id="saveTaskButton"
+        >
           Save task
         </button>
       </div>
     </form>
   </dialog>
 
-  <!-- TASK REVIEW DIALOG -->
-  <dialog id="reviewDialog" class="task-dialog" aria-labelledby="reviewDialogTitle">
+  <!-- MEMBER EVIDENCE SUBMISSION DIALOG -->
+  <dialog
+    id="evidenceDialog"
+    class="task-dialog"
+    aria-labelledby="evidenceDialogTitle"
+  >
+    <form id="evidenceForm">
+
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">TASK SUBMISSION</span>
+          <h2 id="evidenceDialogTitle">Submit task for review</h2>
+        </div>
+
+        <button
+          type="button"
+          class="icon-button"
+          id="closeEvidenceDialog"
+          aria-label="Close evidence dialog"
+        >×</button>
+      </div>
+
+      <input type="hidden" id="evidenceTaskId">
+
+      <p id="evidenceTaskTitle" class="review-task-title"></p>
+
+      <label for="taskEvidence">Evidence / Work description</label>
+      <textarea
+        id="taskEvidence"
+        name="taskEvidence"
+        rows="7"
+        maxlength="5000"
+        required
+        placeholder="Describe the work you completed, what you implemented, and any important details for Faculty to review..."
+      ></textarea>
+
+      <p class="muted">
+        Enter your evidence directly in this text box. No file upload is needed.
+        Maximum 5000 characters.
+      </p>
+
+      <p
+        id="evidenceFormError"
+        class="message error hidden"
+        role="alert"
+        aria-live="assertive"
+      ></p>
+
+      <div class="dialog-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          id="cancelEvidenceButton"
+        >
+          Cancel
+        </button>
+
+        <button
+          class="btn btn-primary"
+          type="submit"
+          id="submitEvidenceButton"
+        >
+          Submit for Review
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- FACULTY TASK REVIEW DIALOG -->
+  <dialog
+    id="reviewDialog"
+    class="task-dialog"
+    aria-labelledby="reviewDialogTitle"
+  >
     <form id="reviewForm">
+
       <div class="dialog-head">
         <div>
           <span class="eyebrow">TASK REVIEW</span>
@@ -436,13 +525,27 @@
 
       <p id="reviewTaskTitle" class="review-task-title"></p>
 
+      <!-- EVIDENCE PROVIDED BY MEMBER -->
+      <div class="evidence-panel">
+        <h3>Member's submitted evidence</h3>
+        <p class="muted">
+          Read the work description or proof submitted by the member.
+        </p>
+
+        <div
+          id="reviewEvidence"
+          class="evidence-content"
+          aria-live="polite"
+        >No evidence submitted yet.</div>
+      </div>
+
       <label for="reviewComment">Review comment</label>
       <textarea
         id="reviewComment"
         name="reviewComment"
         rows="3"
         maxlength="1000"
-        placeholder="Feedback for the team member (optional)"
+        placeholder="Feedback for the team member..."
       ></textarea>
 
       <div class="dialog-actions">
@@ -450,7 +553,9 @@
           type="button"
           class="btn btn-secondary"
           id="requestChangesButton"
-        >Request changes</button>
+        >
+          Request changes
+        </button>
 
         <button type="submit" class="btn btn-primary">
           ✓ Approve task

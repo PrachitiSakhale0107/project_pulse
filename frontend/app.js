@@ -2,16 +2,8 @@
 const API_URL = "http://127.0.0.1:8080/api";
 
 // =====================================================
-// COMMON HELPERS
+// SHARED HELPERS
 // =====================================================
-
-function showMessage(element, message, success = false) {
-    if (!element) return;
-    element.textContent = message;
-    element.classList.remove("hidden", "error", "success");
-    if (message) element.classList.add(success ? "success" : "error");
-    else element.classList.add("hidden");
-}
 
 async function apiRequest(path, options = {}) {
     const response = await fetch(`${API_URL}${path}`, {
@@ -19,42 +11,78 @@ async function apiRequest(path, options = {}) {
         credentials: "include",
         headers: {
             "Content-Type": "application/json",
-            ...options.headers
+            ...(options.headers || {})
         }
     });
 
     const result = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+        const validationMessage = Array.isArray(result.errors)
+            ? result.errors.map(error => error.defaultMessage || error.message).filter(Boolean).join(" ")
+            : "";
+
         throw new Error(
-            result.message || result.error || `Request failed: ${response.status}`
+            validationMessage ||
+            result.message ||
+            result.error ||
+            `Request failed: ${response.status}`
         );
     }
 
     return result;
 }
 
+function showMessage(el, message, success = false) {
+    if (!el) return;
+
+    el.textContent = message || "";
+    el.classList.remove("hidden", "error", "success");
+
+    if (message) {
+        el.classList.add(success ? "success" : "error");
+    } else {
+        el.classList.add("hidden");
+    }
+}
+
 function setText(id, value) {
-    const element = document.getElementById(id);
-    if (element) element.textContent = value ?? "";
+    const el = document.getElementById(id);
+    if (el) el.textContent = value ?? "";
 }
 
-function addText(parent, tag, text, className = "") {
-    const element = document.createElement(tag);
-    element.textContent = text ?? "";
-    if (className) element.className = className;
-    parent.appendChild(element);
-    return element;
+function addText(parent, tag, value, className = "") {
+    const el = document.createElement(tag);
+    el.textContent = value ?? "";
+
+    if (className) el.className = className;
+
+    parent.appendChild(el);
+    return el;
 }
 
-function addActionButton(parent, label, action, className = "btn btn-secondary") {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = className;
-    button.textContent = label;
-    button.addEventListener("click", action);
-    parent.appendChild(button);
-    return button;
+function addButton(
+    parent,
+    label,
+    action,
+    className = "btn btn-secondary"
+) {
+    const el = document.createElement("button");
+
+    el.type = "button";
+    el.className = className;
+    el.textContent = label;
+    el.addEventListener("click", action);
+
+    parent.appendChild(el);
+    return el;
+}
+
+function option(value, label) {
+    const el = document.createElement("option");
+    el.value = value;
+    el.textContent = label;
+    return el;
 }
 
 function formatStatus(status) {
@@ -66,20 +94,12 @@ function formatStatus(status) {
     })[status] || status || "Unknown";
 }
 
-function getTaskTeamId(task) {
-    return task?.teamId ?? task?.team?.id ?? null;
-}
-
-function getTaskAssigneeId(task) {
+function assigneeId(task) {
     return task?.assigneeId ?? task?.assignee?.id ?? null;
 }
 
-function getTaskAssigneeName(task) {
+function assigneeName(task) {
     return task?.assigneeName ?? task?.assignee?.name ?? "";
-}
-
-function getTaskCreatorId(task) {
-    return task?.createdById ?? task?.createdBy?.id ?? null;
 }
 
 function isAdmin() {
@@ -94,12 +114,16 @@ function isMember() {
     return currentUser?.role === "MEMBER";
 }
 
-function escapeText(value) {
-    return String(value ?? "");
+function isAssignedMember(task) {
+    return (
+        isMember() &&
+        assigneeId(task) != null &&
+        String(assigneeId(task)) === String(currentUser?.id)
+    );
 }
 
 // =====================================================
-// MEMBER REGISTRATION
+// INDIVIDUAL MEMBER REGISTRATION
 // =====================================================
 
 const registerForm = document.getElementById("registerForm");
@@ -110,6 +134,7 @@ if (registerForm) {
 
         const message = document.getElementById("registerError");
         const button = document.getElementById("registerButton");
+
         const name = document.getElementById("name")?.value.trim() || "";
         const email = document.getElementById("email")?.value.trim() || "";
         const password = document.getElementById("password")?.value || "";
@@ -117,7 +142,10 @@ if (registerForm) {
         showMessage(message, "");
 
         if (!name || !email || password.length < 6) {
-            showMessage(message, "Enter your name, a valid email, and a password of at least 6 characters.");
+            showMessage(
+                message,
+                "Enter your name, valid email, and password of at least 6 characters."
+            );
             return;
         }
 
@@ -132,12 +160,17 @@ if (registerForm) {
                 body: JSON.stringify({ name, email, password })
             });
 
-            showMessage(message, `Account created for ${user.name}. Redirecting to sign in...`, true);
+            showMessage(
+                message,
+                `Account created for ${user.name || name}. You can now sign in.`,
+                true
+            );
+
             registerForm.reset();
 
             window.setTimeout(() => {
                 window.location.href = "index.html";
-            }, 1000);
+            }, 1500);
         } catch (error) {
             showMessage(message, error.message);
         } finally {
@@ -153,22 +186,35 @@ if (registerForm) {
 // FACULTY REGISTRATION
 // =====================================================
 
-const facultyRegisterForm = document.getElementById("facultyRegisterForm");
+const facultyRegisterForm =
+    document.getElementById("facultyRegisterForm");
 
 if (facultyRegisterForm) {
     facultyRegisterForm.addEventListener("submit", async event => {
         event.preventDefault();
 
-        const message = document.getElementById("facultyRegisterMessage");
-        const button = document.getElementById("facultyRegisterButton");
-        const name = document.getElementById("facultyName")?.value.trim() || "";
-        const email = document.getElementById("facultyEmail")?.value.trim() || "";
-        const password = document.getElementById("facultyPassword")?.value || "";
+        const message =
+            document.getElementById("facultyRegisterMessage");
+
+        const button =
+            document.getElementById("facultyRegisterButton");
+
+        const name =
+            document.getElementById("facultyName")?.value.trim() || "";
+
+        const email =
+            document.getElementById("facultyEmail")?.value.trim() || "";
+
+        const password =
+            document.getElementById("facultyPassword")?.value || "";
 
         showMessage(message, "");
 
         if (!name || !email || password.length < 6) {
-            showMessage(message, "Enter your name, a valid email, and a password of at least 6 characters.");
+            showMessage(
+                message,
+                "Enter your name, valid email, and password of at least 6 characters."
+            );
             return;
         }
 
@@ -185,7 +231,8 @@ if (facultyRegisterForm) {
 
             showMessage(
                 message,
-                result.message || "Registration submitted. Please wait for Admin approval.",
+                result.message ||
+                    "Registration submitted. Wait for Admin approval.",
                 true
             );
 
@@ -213,8 +260,12 @@ if (loginForm) {
 
         const message = document.getElementById("loginError");
         const button = document.getElementById("loginButton");
-        const email = document.getElementById("email")?.value.trim() || "";
-        const password = document.getElementById("password")?.value || "";
+
+        const email =
+            document.getElementById("email")?.value.trim() || "";
+
+        const password =
+            document.getElementById("password")?.value || "";
 
         showMessage(message, "");
 
@@ -230,9 +281,14 @@ if (loginForm) {
             });
 
             await apiRequest("/auth/me");
+
             window.location.replace("dashboard.html");
         } catch (error) {
-            showMessage(message, error.message || "Unable to sign in. Check your credentials.");
+            showMessage(
+                message,
+                error.message ||
+                    "Unable to sign in. Check your credentials."
+            );
         } finally {
             if (button) {
                 button.disabled = false;
@@ -242,67 +298,54 @@ if (loginForm) {
     });
 }
 
-// =====================================================
-// DEMO ACCOUNT BUTTONS
-// =====================================================
-
 document.querySelectorAll(".demo-fill").forEach(button => {
     button.addEventListener("click", () => {
-        const emailInput = document.getElementById("email");
-        const passwordInput = document.getElementById("password");
+        const email = document.getElementById("email");
+        const password = document.getElementById("password");
 
-        if (emailInput && passwordInput) {
-            emailInput.value = button.dataset.email || "";
-            passwordInput.value = button.dataset.password || "";
+        if (email && password) {
+            email.value = button.dataset.email || "";
+            password.value = button.dataset.password || "";
         }
     });
 });
 
 // =====================================================
-// GLOBAL DASHBOARD STATE
+// DASHBOARD STATE AND CURRENT USER
 // =====================================================
 
 let currentUser = null;
 let kanbanTasks = [];
-let kanbanTeams = [];
-let workspaceUsers = [];
 
 async function loadCurrentUser() {
     try {
         currentUser = await apiRequest("/auth/me");
 
-        setText("userName", currentUser.name || currentUser.email || "User");
-        setText("userRole", currentUser.role || "Member");
         setText(
-            "userAvatar",
-            (currentUser.name || currentUser.email || "U").charAt(0).toUpperCase()
+            "userName",
+            currentUser.name || currentUser.email || "User"
         );
 
-        // Faculty approval is an Admin-only feature.
+        setText("userRole", currentUser.role || "MEMBER");
+
+        setText(
+            "userAvatar",
+            (currentUser.name || currentUser.email || "U")
+                .charAt(0)
+                .toUpperCase()
+        );
+
         const facultyNav = document.getElementById("facultyNav");
-        if (facultyNav) facultyNav.classList.toggle("hidden", !isAdmin());
 
-        // Team creation is displayed for members and Admin.
-        // The backend must allow the matching roles as well.
-        const createTeamPanel = document.getElementById("createTeamPanel");
-        if (createTeamPanel) {
-            createTeamPanel.hidden = !(isAdmin() || isMember());
+        if (facultyNav) {
+            facultyNav.classList.toggle("hidden", !isAdmin());
         }
 
-        const createTeamHeading = createTeamPanel?.querySelector("h3");
-        if (createTeamHeading && isMember()) {
-            createTeamHeading.textContent = "Create Your Project Team";
-        }
+        const newTask = document.getElementById("newTaskButton");
 
-        const createTeamDescription = createTeamPanel?.querySelector(".create-team-title p");
-        if (createTeamDescription && isMember()) {
-            createTeamDescription.textContent =
-                "Create your project team, select its members and choose an approved faculty guide.";
-        }
-
-        const createTeamButton = document.getElementById("createTeamButton");
-        if (createTeamButton && isMember()) {
-            createTeamButton.textContent = "Create Team";
+        if (newTask) {
+            newTask.classList.toggle("hidden", !isFaculty());
+            newTask.disabled = !isFaculty();
         }
 
         if (isAdmin()) {
@@ -318,22 +361,28 @@ async function loadCurrentUser() {
 }
 
 // =====================================================
-// FACULTY APPROVAL — ADMIN ONLY
+// ADMIN: FACULTY REGISTRATION APPROVAL
 // =====================================================
 
-const pendingFacultyList = document.getElementById("pendingFacultyList");
-const pendingFacultyMessage = document.getElementById("pendingFacultyMessage");
-const refreshFacultyButton = document.getElementById("refreshFacultyButton");
+const pendingFacultyList =
+    document.getElementById("pendingFacultyList");
+
+const pendingFacultyMessage =
+    document.getElementById("pendingFacultyMessage");
+
+const refreshFacultyButton =
+    document.getElementById("refreshFacultyButton");
 
 async function updatePendingFacultyCount() {
-    const countElement = document.getElementById("pendingFacultyCount");
-    if (!countElement || !isAdmin()) return;
+    const el = document.getElementById("pendingFacultyCount");
+
+    if (!el || !isAdmin()) return;
 
     try {
-        const faculty = await apiRequest("/users/pending-faculty");
-        countElement.textContent = Array.isArray(faculty) ? faculty.length : 0;
+        const users = await apiRequest("/users/pending-faculty");
+        el.textContent = Array.isArray(users) ? users.length : 0;
     } catch (error) {
-        console.warn("Could not get pending faculty count:", error.message);
+        console.warn(error.message);
     }
 }
 
@@ -341,59 +390,83 @@ async function loadPendingFaculty() {
     if (!pendingFacultyList || !isAdmin()) return;
 
     pendingFacultyList.replaceChildren();
-    showMessage(pendingFacultyMessage, "Loading pending registrations...");
+
+    showMessage(
+        pendingFacultyMessage,
+        "Loading pending registrations..."
+    );
 
     try {
-        const faculty = await apiRequest("/users/pending-faculty");
+        const users = await apiRequest("/users/pending-faculty");
+
         pendingFacultyList.replaceChildren();
 
-        if (!Array.isArray(faculty) || faculty.length === 0) {
-            showMessage(pendingFacultyMessage, "There are no pending faculty registrations.", true);
+        if (!Array.isArray(users) || !users.length) {
+            showMessage(
+                pendingFacultyMessage,
+                "There are no pending faculty registrations.",
+                true
+            );
+
             setText("pendingFacultyCount", "0");
             return;
         }
 
         showMessage(
             pendingFacultyMessage,
-            `${faculty.length} registration(s) awaiting approval.`,
+            `${users.length} registration(s) awaiting approval.`,
             true
         );
-        setText("pendingFacultyCount", faculty.length);
 
-        faculty.forEach(user => {
+        setText("pendingFacultyCount", users.length);
+
+        users.forEach(user => {
             const card = document.createElement("article");
             card.className = "task-card faculty-pending-card";
 
             addText(card, "h4", user.name, "task-card-title");
-            addText(card, "p", user.email, "task-card-description");
+            addText(card, "p", user.email);
             addText(card, "p", "Status: Pending Admin approval");
 
-            const button = addActionButton(card, "Approve faculty", async () => {
-                if (!window.confirm(`Approve faculty account for ${user.name}?`)) return;
+            const button = addButton(
+                card,
+                "Approve faculty",
+                async () => {
+                    if (!confirm(`Approve faculty account for ${user.name}?`)) {
+                        return;
+                    }
 
-                button.disabled = true;
-                button.textContent = "Approving...";
+                    button.disabled = true;
+                    button.textContent = "Approving...";
 
-                try {
-                    await apiRequest(`/users/${encodeURIComponent(user.id)}/approve`, {
-                        method: "PATCH"
-                    });
+                    try {
+                        await apiRequest(
+                            `/users/${encodeURIComponent(user.id)}/approve`,
+                            { method: "PATCH" }
+                        );
 
-                    await loadPendingFaculty();
-                    await loadTeamMembers();
+                        await loadPendingFaculty();
+                        alert(`${user.name} has been approved.`);
+                    } catch (error) {
+                        showMessage(
+                            pendingFacultyMessage,
+                            error.message
+                        );
 
-                    window.alert(`${user.name} has been approved and can now sign in.`);
-                } catch (error) {
-                    showMessage(pendingFacultyMessage, `Approval failed: ${error.message}`);
-                    button.disabled = false;
-                    button.textContent = "Approve faculty";
-                }
-            }, "btn btn-primary");
+                        button.disabled = false;
+                        button.textContent = "Approve faculty";
+                    }
+                },
+                "btn btn-primary"
+            );
 
             pendingFacultyList.appendChild(card);
         });
     } catch (error) {
-        showMessage(pendingFacultyMessage, `Could not load pending faculty: ${error.message}`);
+        showMessage(
+            pendingFacultyMessage,
+            `Could not load pending faculty: ${error.message}`
+        );
     }
 }
 
@@ -407,14 +480,14 @@ if (refreshFacultyButton) {
 
 const navButtons = document.querySelectorAll(".nav-item[data-view]");
 
-const dashboardViews = {
+const views = {
     board: document.getElementById("boardView"),
     analytics: document.getElementById("analyticsView"),
     team: document.getElementById("teamView"),
     faculty: document.getElementById("facultyView")
 };
 
-const dashboardTitles = {
+const viewTitles = {
     board: "Kanban board",
     analytics: "Analytics",
     team: "Team management",
@@ -423,45 +496,52 @@ const dashboardTitles = {
 
 navButtons.forEach(button => {
     button.addEventListener("click", async () => {
-        const selectedView = button.dataset.view;
-        if (!dashboardViews[selectedView]) return;
-        if (selectedView === "faculty" && !isAdmin()) return;
+        const name = button.dataset.view;
+
+        if (!views[name]) return;
+        if (name === "faculty" && !isAdmin()) return;
 
         navButtons.forEach(item => item.classList.remove("active"));
         button.classList.add("active");
 
-        Object.values(dashboardViews).forEach(view => {
-            if (view) view.classList.remove("active");
+        Object.values(views).forEach(view => {
+            view?.classList.remove("active");
         });
 
-        dashboardViews[selectedView].classList.add("active");
-        setText("pageTitle", dashboardTitles[selectedView]);
+        views[name].classList.add("active");
+        setText("pageTitle", viewTitles[name] || name);
 
-        if (selectedView === "faculty") {
+        if (name === "faculty") {
             await loadPendingFaculty();
-        } else if (selectedView === "analytics") {
+        }
+
+        if (name === "analytics") {
             await loadKanbanAnalytics();
-        } else if (selectedView === "team") {
-            await loadTeamMembers();
-        } else if (selectedView === "board") {
+        }
+
+        if (name === "team") {
+            await loadTeamUsers();
+        }
+
+        if (name === "board") {
             await loadDashboard();
         }
 
         document.getElementById("sidebar")?.classList.remove("open");
-        document.getElementById("mobileMenu")?.setAttribute("aria-expanded", "false");
+
+        document.getElementById("mobileMenu")
+            ?.setAttribute("aria-expanded", "false");
     });
 });
-
-// =====================================================
-// MOBILE MENU
-// =====================================================
 
 const mobileMenu = document.getElementById("mobileMenu");
 
 if (mobileMenu) {
     mobileMenu.addEventListener("click", () => {
         const sidebar = document.getElementById("sidebar");
+
         sidebar?.classList.toggle("open");
+
         mobileMenu.setAttribute(
             "aria-expanded",
             sidebar?.classList.contains("open") ? "true" : "false"
@@ -470,447 +550,62 @@ if (mobileMenu) {
 }
 
 // =====================================================
-// TEAM MANAGEMENT ELEMENTS
+// TEAM MANAGEMENT
 // =====================================================
 
-const createTeamPanel = document.getElementById("createTeamPanel");
-const createTeamForm = document.getElementById("createTeamForm");
-const teamNameInput = document.getElementById("teamName");
-const teamFacultySelect = document.getElementById("teamFaculty");
-const teamMembersSelect = document.getElementById("teamMembers");
-const createTeamMessage = document.getElementById("createTeamMessage");
-const createTeamButton = document.getElementById("createTeamButton");
-const createdTeamsList = document.getElementById("createdTeamsList");
-const refreshTeamsButton = document.getElementById("refreshTeamsButton");
-
-async function fetchAccessibleTeams() {
-    if (!currentUser) return [];
-
-    const path = isAdmin() ? "/teams" : "/teams/my";
-    const teams = await apiRequest(path);
-
-    if (!Array.isArray(teams)) {
-        throw new Error("Unexpected teams response from server.");
-    }
-
-    kanbanTeams = teams;
-    return teams;
-}
-
-// The backend should provide /users/team-options for member team creation.
-// That endpoint should return approved faculty and member UserResponse items.
-async function loadTeamAssignmentOptions() {
-    if (!teamFacultySelect || !teamMembersSelect || !(isAdmin() || isMember())) return;
-
-    teamFacultySelect.replaceChildren();
-    teamMembersSelect.replaceChildren();
-
-    const facultyPlaceholder = document.createElement("option");
-    facultyPlaceholder.value = "";
-    facultyPlaceholder.textContent = "Select approved Faculty";
-    teamFacultySelect.appendChild(facultyPlaceholder);
-
-    try {
-        const users = await apiRequest(isMember() ? "/users/team-options" : "/users");
-
-        if (!Array.isArray(users)) {
-            throw new Error("Expected an array of users from the server.");
-        }
-
-        workspaceUsers = users;
-
-        const faculty = users.filter(user =>
-            user.role === "FACULTY" && user.approved === true
-        );
-
-        const members = users.filter(user =>
-            user.role === "MEMBER" && user.approved !== false
-        );
-
-        faculty.forEach(user => {
-            const option = document.createElement("option");
-            option.value = String(user.id);
-            option.textContent = `${user.name} (${user.email})`;
-            teamFacultySelect.appendChild(option);
-        });
-
-        if (!faculty.length) {
-            facultyPlaceholder.textContent = "No approved Faculty accounts available";
-        }
-
-        members.forEach(user => {
-            const option = document.createElement("option");
-            option.value = String(user.id);
-            option.textContent = `${user.name} (${user.email})`;
-
-            // Include the current member in their own team.
-            if (isMember() && String(user.id) === String(currentUser.id)) {
-                option.selected = true;
-            }
-
-            teamMembersSelect.appendChild(option);
-        });
-
-        if (!members.length) {
-            const option = document.createElement("option");
-            option.disabled = true;
-            option.textContent = "No approved Members available";
-            teamMembersSelect.appendChild(option);
-        }
-    } catch (error) {
-        showMessage(
-            createTeamMessage,
-            `Could not load team creation options: ${error.message}. Check the backend endpoint.`
-        );
-    }
-}
-
-// =====================================================
-// TEAM PROGRESS HELPERS
-// =====================================================
-
-function getTeamTasks(team) {
-    return kanbanTasks.filter(task =>
-        getTaskTeamId(task) != null &&
-        String(getTaskTeamId(task)) === String(team.id)
-    );
-}
-
-function getStatusCounts(tasks) {
-    return {
-        BACKLOG: tasks.filter(task => task.status === "BACKLOG").length,
-        DOING: tasks.filter(task => task.status === "DOING").length,
-        REVIEW: tasks.filter(task => task.status === "REVIEW").length,
-        DONE: tasks.filter(task => task.status === "DONE").length
-    };
-}
-
-function getCompletionPercentage(tasks) {
-    if (!tasks.length) return 0;
-    return Math.round((tasks.filter(task => task.status === "DONE").length / tasks.length) * 100);
-}
-
-function getProjectStatus(tasks) {
-    if (!tasks.length) return "Not started";
-    return tasks.every(task => task.status === "DONE") ? "Completed" : "In progress";
-}
-
-function renderTeamProgress(team, card) {
-    const tasks = getTeamTasks(team);
-    const counts = getStatusCounts(tasks);
-    const percentage = getCompletionPercentage(tasks);
-
-    const section = document.createElement("section");
-    section.className = "team-progress-section";
-
-    addText(section, "h4", "Project progress");
-
-    const summary = document.createElement("div");
-    summary.className = "task-card-details";
-    addText(summary, "span", `Total tasks: ${tasks.length}`);
-    addText(summary, "span", `Completed: ${counts.DONE}`);
-    addText(summary, "span", `Progress: ${percentage}%`);
-    section.appendChild(summary);
-
-    const track = document.createElement("div");
-    track.className = "progress-track";
-    track.setAttribute("role", "progressbar");
-    track.setAttribute("aria-label", `${team.name} completion`);
-    track.setAttribute("aria-valuenow", String(percentage));
-    track.setAttribute("aria-valuemin", "0");
-    track.setAttribute("aria-valuemax", "100");
-
-    const fill = document.createElement("div");
-    fill.className = "progress-fill";
-    fill.style.width = `${percentage}%`;
-    track.appendChild(fill);
-    section.appendChild(track);
-
-    addText(section, "p", `Project status: ${getProjectStatus(tasks)}`, "team-project-status");
-
-    const statusGrid = document.createElement("div");
-    statusGrid.className = "task-card-details team-status-counts";
-    addText(statusGrid, "span", `Backlog: ${counts.BACKLOG}`);
-    addText(statusGrid, "span", `Doing: ${counts.DOING}`);
-    addText(statusGrid, "span", `Review: ${counts.REVIEW}`);
-    addText(statusGrid, "span", `Done: ${counts.DONE}`);
-    section.appendChild(statusGrid);
-
-    card.appendChild(section);
-
-    addText(card, "h4", "Member work summary");
-
-    const memberIds = Array.isArray(team.memberIds) ? team.memberIds : [];
-    const memberNames = Array.isArray(team.memberNames) ? team.memberNames : [];
-    const memberList = document.createElement("div");
-    memberList.className = "team-member-progress-list";
-
-    if (!memberNames.length) {
-        addText(memberList, "p", "No members assigned to this team.", "muted");
-    } else {
-        memberNames.forEach((memberName, index) => {
-            const memberId = memberIds[index];
-            const memberTasks = tasks.filter(task => {
-                const assigneeId = getTaskAssigneeId(task);
-
-                // Use ID when available; names are only a fallback.
-                return memberId != null
-                    ? String(assigneeId) === String(memberId)
-                    : getTaskAssigneeName(task) === memberName;
-            });
-
-            const memberCounts = getStatusCounts(memberTasks);
-            const memberCard = document.createElement("div");
-            memberCard.className = "team-member-progress";
-
-            addText(memberCard, "strong", memberName);
-            addText(memberCard, "p", `Assigned tasks: ${memberTasks.length}`);
-            addText(
-                memberCard,
-                "p",
-                `Backlog ${memberCounts.BACKLOG} · Doing ${memberCounts.DOING} · Review ${memberCounts.REVIEW} · Done ${memberCounts.DONE}`
-            );
-            addText(
-                memberCard,
-                "p",
-                memberTasks.length
-                    ? `Completion: ${getCompletionPercentage(memberTasks)}%`
-                    : "No tasks assigned yet.",
-                "muted"
-            );
-
-            memberList.appendChild(memberCard);
-        });
-    }
-
-    card.appendChild(memberList);
-
-    addText(card, "h4", "Team tasks");
-
-    if (!tasks.length) {
-        addText(card, "p", "No tasks have been assigned to this team yet.", "muted");
-        return;
-    }
-
-    const taskList = document.createElement("div");
-    taskList.className = "team-task-list";
-
-    tasks.forEach(task => {
-        const row = document.createElement("div");
-        row.className = "team-task-row";
-
-        addText(row, "strong", task.title);
-        addText(row, "span", formatStatus(task.status), "team-task-status");
-        addText(row, "p", `Assigned to: ${getTaskAssigneeName(task) || "Unassigned"}`);
-        if (task.dueDate) addText(row, "p", `Due: ${task.dueDate}`);
-
-        taskList.appendChild(row);
-    });
-
-    card.appendChild(taskList);
-}
-
-function renderCreatedTeams(teams) {
-    if (!createdTeamsList) return;
-    createdTeamsList.replaceChildren();
-
-    if (!Array.isArray(teams) || !teams.length) {
-        addText(
-            createdTeamsList,
-            "p",
-            "No teams have been created or assigned to you yet.",
-            "muted"
-        );
-        return;
-    }
-
-    teams.forEach(team => {
-        const card = document.createElement("article");
-        card.className = "task-card team-card";
-
-        addText(card, "h3", team.name, "task-card-title");
-        addText(card, "p", `Team ID: ${team.id}`, "muted");
-
-        addText(card, "h4", "Assigned Faculty");
-        addText(card, "p", team.facultyName || "Faculty not assigned");
-
-        addText(card, "h4", "Team Members");
-        const members = Array.isArray(team.memberNames) ? team.memberNames : [];
-        const list = document.createElement("ul");
-
-        if (!members.length) {
-            addText(list, "li", "No members assigned.");
-        } else {
-            members.forEach(name => addText(list, "li", name));
-        }
-
-        card.appendChild(list);
-        renderTeamProgress(team, card);
-        createdTeamsList.appendChild(card);
-    });
-}
-
-async function loadCreatedTeams() {
-    if (!currentUser) return;
-
-    if (createdTeamsList) {
-        createdTeamsList.replaceChildren();
-        addText(createdTeamsList, "p", "Loading teams...", "muted");
-    }
-
-    try {
-        const teams = await fetchAccessibleTeams();
-        renderCreatedTeams(teams);
-    } catch (error) {
-        console.error("Could not load teams:", error);
-        if (createdTeamsList) {
-            createdTeamsList.replaceChildren();
-            addText(createdTeamsList, "p", `Could not load teams: ${error.message}`);
-        }
-    }
-}
-
-// =====================================================
-// CREATE TEAM
-// =====================================================
-
-if (createTeamForm) {
-    createTeamForm.addEventListener("submit", async event => {
-        event.preventDefault();
-
-        if (!(isAdmin() || isMember())) {
-            showMessage(createTeamMessage, "Your role is not allowed to create teams.");
-            return;
-        }
-
-        const name = teamNameInput?.value.trim() || "";
-        const facultyId = teamFacultySelect?.value || "";
-        const selectedMemberIds = teamMembersSelect
-            ? Array.from(teamMembersSelect.selectedOptions)
-                .filter(option => option.value)
-                .map(option => Number(option.value))
-            : [];
-
-        // Ensure the member creating the team is included.
-        if (isMember() && currentUser?.id != null) {
-            if (!selectedMemberIds.includes(Number(currentUser.id))) {
-                selectedMemberIds.push(Number(currentUser.id));
-            }
-        }
-
-        if (name.length < 3) {
-            showMessage(createTeamMessage, "Team name must contain at least 3 characters.");
-            return;
-        }
-
-        if (!facultyId) {
-            showMessage(createTeamMessage, "Please select an approved Faculty member.");
-            return;
-        }
-
-        if (!selectedMemberIds.length) {
-            showMessage(createTeamMessage, "Please select at least one team member.");
-            return;
-        }
-
-        if (createTeamButton) {
-            createTeamButton.disabled = true;
-            createTeamButton.textContent = "Creating team...";
-        }
-
-        try {
-            const createdTeam = await apiRequest("/teams", {
-                method: "POST",
-                body: JSON.stringify({
-                    name,
-                    facultyId: Number(facultyId),
-                    memberIds: [...new Set(selectedMemberIds)]
-                })
-            });
-
-            showMessage(createTeamMessage, `Team "${createdTeam.name}" created successfully.`, true);
-            createTeamForm.reset();
-
-            await loadTeamAssignmentOptions();
-            await loadDashboard();
-            await loadCreatedTeams();
-
-            window.alert(`Team "${createdTeam.name}" was created successfully.`);
-        } catch (error) {
-            showMessage(
-                createTeamMessage,
-                `Could not create team: ${error.message}. If you are a Member, confirm TeamController allows member team creation.`
-            );
-        } finally {
-            if (createTeamButton) {
-                createTeamButton.disabled = false;
-                createTeamButton.textContent = "Create Team";
-            }
-        }
-    });
-}
-
-if (refreshTeamsButton) {
-    refreshTeamsButton.addEventListener("click", async () => {
-        await loadCreatedTeams();
-        await loadTeamAssignmentOptions();
-    });
-}
-
-// =====================================================
-// WORKSPACE USERS AND TEAM MANAGEMENT
-// =====================================================
-
-async function loadTeamMembers() {
+async function loadTeamUsers() {
     const table = document.getElementById("teamTable");
-    const view = document.getElementById("teamView");
+    if (!table) return;
 
-    if (createTeamPanel) {
-        createTeamPanel.hidden = !(isAdmin() || isMember());
+    table.replaceChildren();
+
+    if (!isAdmin() && !isFaculty()) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = 3;
+        cell.textContent =
+            "Workspace user details are available to Admin and Faculty.";
+
+        row.appendChild(cell);
+        table.appendChild(row);
+        return;
     }
 
-    if (table) table.replaceChildren();
-
-    // Members may not have permission to see all workspace users.
-    // Use the current user's details for their dashboard instead.
     try {
-        if (isAdmin() || isFaculty()) {
-            const users = await apiRequest("/users");
-            workspaceUsers = Array.isArray(users) ? users : [];
+        const users = await apiRequest("/users");
 
-            if (table) {
-                workspaceUsers.forEach(user => {
-                    const row = document.createElement("tr");
-                    addText(row, "td", user.name);
-                    addText(row, "td", user.email);
-                    addText(row, "td", user.role);
-                    table.appendChild(row);
-                });
-            }
-        } else if (table) {
+        if (!Array.isArray(users) || users.length === 0) {
             const row = document.createElement("tr");
-            addText(row, "td", currentUser?.name || "Current user");
-            addText(row, "td", currentUser?.email || "");
-            addText(row, "td", currentUser?.role || "MEMBER");
-            table.appendChild(row);
-        }
+            const cell = document.createElement("td");
 
-        if (view) view.dataset.loaded = "true";
-    } catch (error) {
-        if (table) {
-            const row = document.createElement("tr");
-            const cell = addText(row, "td", `Could not load workspace users: ${error.message}`);
             cell.colSpan = 3;
+            cell.textContent = "No workspace users found.";
+
+            row.appendChild(cell);
             table.appendChild(row);
+            return;
         }
+
+        users.forEach(user => {
+            const row = document.createElement("tr");
+
+            addText(row, "td", user.name || "—");
+            addText(row, "td", user.email || "—");
+            addText(row, "td", user.role || "—");
+
+            table.appendChild(row);
+        });
+    } catch (error) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = 3;
+        cell.textContent = `Could not load workspace users: ${error.message}`;
+
+        row.appendChild(cell);
+        table.appendChild(row);
     }
-
-    await loadTeamAssignmentOptions();
-    await loadCreatedTeams();
-}
-
-if (refreshTeamsButton) {
-    refreshTeamsButton.addEventListener("click", loadTeamMembers);
 }
 
 // =====================================================
@@ -924,7 +619,7 @@ if (logoutButton) {
         try {
             await apiRequest("/auth/logout", { method: "POST" });
         } catch (error) {
-            console.warn("Logout request failed:", error.message);
+            console.warn("Logout failed:", error.message);
         } finally {
             window.location.href = "index.html";
         }
@@ -932,7 +627,7 @@ if (logoutButton) {
 }
 
 // =====================================================
-// TASK DIALOG AND TEAM SELECTOR
+// TASK CREATE / EDIT DIALOG
 // =====================================================
 
 const newTaskButton = document.getElementById("newTaskButton");
@@ -945,307 +640,216 @@ const saveTaskButton = document.getElementById("saveTaskButton");
 const taskAssignee = document.getElementById("taskAssignee");
 const taskDueDate = document.getElementById("taskDueDate");
 
-function createTaskTeamSelect() {
-    let select = document.getElementById("taskTeam");
-    if (select || !taskForm) return select;
-
-    const field = document.createElement("div");
-    field.className = "form-group task-team-field";
-
-    const label = document.createElement("label");
-    label.htmlFor = "taskTeam";
-    label.textContent = "Team / Project";
-
-    select = document.createElement("select");
-    select.id = "taskTeam";
-    select.name = "teamId";
-    select.required = true;
-
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = "Select a team";
-    select.appendChild(placeholder);
-
-    field.appendChild(label);
-    field.appendChild(select);
-
-    if (taskAssignee) {
-        let directChild = taskAssignee;
-        while (directChild.parentElement && directChild.parentElement !== taskForm) {
-            directChild = directChild.parentElement;
-        }
-
-        if (directChild.parentElement === taskForm) {
-            taskForm.insertBefore(field, directChild);
-        } else {
-            taskForm.appendChild(field);
-        }
-    } else {
-        taskForm.appendChild(field);
+function showTaskError(message) {
+    if (!taskFormError) {
+        alert(message);
+        return;
     }
 
-    return select;
+    taskFormError.textContent = message;
+    taskFormError.classList.remove("hidden");
+    taskFormError.classList.add("error");
 }
 
-const taskTeamSelect = createTaskTeamSelect();
-
-async function loadTaskTeams(selectedTeamId = "") {
-    if (!taskTeamSelect || !currentUser) return;
-
-    taskTeamSelect.replaceChildren();
-
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = "Select a team";
-    taskTeamSelect.appendChild(placeholder);
-
-    try {
-        const teams = await fetchAccessibleTeams();
-
-        teams.forEach(team => {
-            const option = document.createElement("option");
-            option.value = String(team.id);
-            option.textContent = team.name;
-            taskTeamSelect.appendChild(option);
-        });
-
-        if (!teams.length) {
-            placeholder.textContent = "No teams available — create or join a team first";
-        }
-
-        if (selectedTeamId != null && String(selectedTeamId) !== "") {
-            taskTeamSelect.value = String(selectedTeamId);
-        }
-
-        if (selectedTeamId && taskTeamSelect.value !== String(selectedTeamId)) {
-            taskTeamSelect.value = "";
-        }
-    } catch (error) {
-        console.error("Could not load task teams:", error);
-        showTaskError("Could not load teams: " + error.message);
-    }
-}
-
-async function loadTaskAssignees(selectedTeamId = "", selectedAssigneeId = "") {
+async function loadTaskAssignees(selectedId = "") {
     if (!taskAssignee) return;
 
     taskAssignee.replaceChildren();
-
-    const unassigned = document.createElement("option");
-    unassigned.value = "";
-    unassigned.textContent = "Unassigned";
-    taskAssignee.appendChild(unassigned);
+    taskAssignee.appendChild(option("", "Unassigned"));
 
     try {
-        let users = [];
+        if (isFaculty() || isAdmin()) {
+            const users = await apiRequest("/users");
 
-        if (isMember()) {
-            // Members should only assign tasks to people in their own teams.
-            users = workspaceUsers.length
-                ? workspaceUsers
-                : await apiRequest("/users/team-options");
-        } else {
-            users = await apiRequest("/users");
-        }
-
-        const selectedTeam = kanbanTeams.find(
-            team => String(team.id) === String(selectedTeamId)
-        );
-
-        let members = users.filter(user =>
-            user.role === "MEMBER" && user.approved !== false
-        );
-
-        if (selectedTeam && Array.isArray(selectedTeam.memberIds)) {
-            members = members.filter(user =>
-                selectedTeam.memberIds.some(id => String(id) === String(user.id))
+            const members = users.filter(
+                user =>
+                    user.role === "MEMBER" &&
+                    user.approved !== false
             );
-        } else if (selectedTeam && Array.isArray(selectedTeam.memberNames)) {
-            members = members.filter(user =>
-                selectedTeam.memberNames.includes(user.name)
+
+            members.forEach(user => {
+                taskAssignee.appendChild(
+                    option(String(user.id), user.name)
+                );
+            });
+        } else if (currentUser) {
+            taskAssignee.appendChild(
+                option(String(currentUser.id), currentUser.name)
             );
         }
 
-        members.forEach(user => {
-            const option = document.createElement("option");
-            option.value = String(user.id);
-            option.textContent = user.name;
-            taskAssignee.appendChild(option);
-        });
-
-        if (selectedAssigneeId != null && selectedAssigneeId !== "") {
-            taskAssignee.value = String(selectedAssigneeId);
-
-            if (taskAssignee.value !== String(selectedAssigneeId)) {
-                const option = document.createElement("option");
-                option.value = String(selectedAssigneeId);
-                option.textContent = "Current assignee";
-                taskAssignee.appendChild(option);
-                taskAssignee.value = String(selectedAssigneeId);
-            }
+        if (selectedId !== "" && selectedId != null) {
+            taskAssignee.value = String(selectedId);
         }
     } catch (error) {
-        console.error("Could not load task assignees:", error);
-        showTaskError("Could not load team members: " + error.message);
+        showTaskError("Could not load members: " + error.message);
     }
-}
-
-if (taskTeamSelect) {
-    taskTeamSelect.addEventListener("change", async () => {
-        await loadTaskAssignees(taskTeamSelect.value);
-    });
-}
-
-if (newTaskButton && taskDialog) {
-    newTaskButton.addEventListener("click", async () => {
-        resetTaskForm();
-        taskFormError?.classList.add("hidden");
-        taskFormError?.classList.remove("error", "success");
-
-        taskDialog.showModal();
-        await loadTaskTeams();
-        await loadTaskAssignees(taskTeamSelect?.value || "");
-    });
-}
-
-if (closeTaskDialog && taskDialog) {
-    closeTaskDialog.addEventListener("click", () => taskDialog.close());
-}
-
-if (cancelTaskButton && taskDialog) {
-    cancelTaskButton.addEventListener("click", () => taskDialog.close());
 }
 
 function resetTaskForm() {
     taskForm?.reset();
+
     setText("taskDialogTitle", "Create a task");
 
-    if (saveTaskButton) saveTaskButton.textContent = "Save task";
+    if (saveTaskButton) {
+        saveTaskButton.textContent = "Save task";
+    }
 
-    const taskId = document.getElementById("taskId");
-    if (taskId) taskId.value = "";
+    const id = document.getElementById("taskId");
+    if (id) id.value = "";
 
     if (taskDueDate) {
         taskDueDate.disabled = false;
         taskDueDate.readOnly = false;
     }
 
-    if (taskTeamSelect) taskTeamSelect.value = "";
+    if (taskAssignee) {
+        taskAssignee.disabled = false;
+    }
+
+    showMessage(taskFormError, "");
+}
+
+if (newTaskButton && taskDialog) {
+    newTaskButton.addEventListener("click", async () => {
+        if (!isFaculty()) return;
+
+        resetTaskForm();
+        taskDialog.showModal();
+
+        await loadTaskAssignees();
+    });
+}
+
+if (closeTaskDialog && taskDialog) {
+    closeTaskDialog.addEventListener("click", () => {
+        taskDialog.close();
+    });
+}
+
+if (cancelTaskButton && taskDialog) {
+    cancelTaskButton.addEventListener("click", () => {
+        taskDialog.close();
+    });
 }
 
 async function editTask(task) {
-    if (!taskDialog || !taskForm) return;
-
-    taskFormError?.classList.add("hidden");
-    taskFormError?.classList.remove("error", "success");
-
-    try {
-        await loadTaskTeams(getTaskTeamId(task) ?? "");
-
-        await loadTaskAssignees(
-            getTaskTeamId(task) ?? "",
-            getTaskAssigneeId(task) ?? ""
+    if (isAdmin() || (!isFaculty() && !isAssignedMember(task))) {
+        alert(
+            "Only Faculty or the member assigned to this task can edit it."
         );
-
-        const taskIdInput = document.getElementById("taskId");
-        const titleInput = document.getElementById("taskTitle");
-        const descriptionInput = document.getElementById("taskDescription");
-        const priorityInput = document.getElementById("taskPriority");
-        const statusInput = document.getElementById("taskStatus");
-
-        if (taskIdInput) taskIdInput.value = task.id;
-        if (titleInput) titleInput.value = task.title || "";
-        if (descriptionInput) descriptionInput.value = task.description || "";
-        if (priorityInput) priorityInput.value = task.priority || "MEDIUM";
-        if (statusInput) statusInput.value = task.status || "BACKLOG";
-
-        if (taskDueDate) {
-            taskDueDate.value = task.dueDate || "";
-            taskDueDate.disabled = false;
-            taskDueDate.readOnly = false;
-        }
-
-        if (taskTeamSelect) {
-            taskTeamSelect.value = getTaskTeamId(task) != null
-                ? String(getTaskTeamId(task))
-                : "";
-        }
-
-        setText("taskDialogTitle", "Edit task");
-        if (saveTaskButton) saveTaskButton.textContent = "Save changes";
-
-        taskDialog.showModal();
-    } catch (error) {
-        showTaskError("Could not open task for editing: " + error.message);
-    }
-}
-
-function showTaskError(message) {
-    if (!taskFormError) {
-        window.alert(message);
         return;
     }
 
-    taskFormError.textContent = message;
-    taskFormError.classList.remove("hidden");
-}
+    if (!taskDialog || !taskForm) return;
 
-// =====================================================
-// SAVE TASK
-// =====================================================
+    showMessage(taskFormError, "");
+
+    try {
+        await loadTaskAssignees(assigneeId(task) ?? "");
+
+        const fields = {
+            taskId: task.id,
+            taskTitle: task.title || "",
+            taskDescription: task.description || "",
+            taskPriority: task.priority || "MEDIUM",
+            taskStatus: task.status || "BACKLOG"
+        };
+
+        Object.entries(fields).forEach(([id, value]) => {
+            const el = document.getElementById(id);
+            if (el) el.value = value;
+        });
+
+        if (taskDueDate) {
+            taskDueDate.value = task.dueDate || "";
+        }
+
+        if (taskAssignee) {
+            taskAssignee.disabled = !isFaculty();
+        }
+
+        setText("taskDialogTitle", "Edit task");
+
+        if (saveTaskButton) {
+            saveTaskButton.textContent = "Save changes";
+        }
+
+        taskDialog.showModal();
+    } catch (error) {
+        showTaskError(error.message);
+    }
+}
 
 if (taskForm) {
     taskForm.addEventListener("submit", async event => {
         event.preventDefault();
-        taskFormError?.classList.add("hidden");
+        showMessage(taskFormError, "");
 
-        const title = document.getElementById("taskTitle")?.value.trim() || "";
-        const description = document.getElementById("taskDescription")?.value.trim() || "";
-        const priority = document.getElementById("taskPriority")?.value || "MEDIUM";
-        const dueDate = document.getElementById("taskDueDate")?.value || "";
-        const assigneeValue = document.getElementById("taskAssignee")?.value || "";
-        const status = document.getElementById("taskStatus")?.value || "BACKLOG";
-        const taskId = document.getElementById("taskId")?.value || "";
-        const teamId = taskTeamSelect?.value || "";
+        const title =
+            document.getElementById("taskTitle")?.value.trim() || "";
+
+        const description =
+            document.getElementById("taskDescription")?.value.trim() || "";
+
+        const priority =
+            document.getElementById("taskPriority")?.value || "MEDIUM";
+
+        const dueDate =
+            document.getElementById("taskDueDate")?.value || "";
+
+        const taskId =
+            document.getElementById("taskId")?.value || "";
 
         if (!title) {
-            showTaskError("Please enter a task title.");
+            showTaskError("Enter a task title.");
             return;
         }
 
-        if (!teamId) {
-            showTaskError("Please select the team this task belongs to.");
+        if (!isFaculty() && !taskId) {
+            showTaskError("Only Faculty can create tasks.");
             return;
         }
 
-        const taskData = {
+        const data = {
             title,
             description,
             priority,
-            status,
             dueDate: dueDate || null,
-            assigneeId: assigneeValue ? Number(assigneeValue) : null,
-            teamId: Number(teamId)
+            status: taskId
+                ? (
+                    document.getElementById("taskStatus")?.value ||
+                    "BACKLOG"
+                )
+                : "BACKLOG",
+            assigneeId:
+                isFaculty() && taskAssignee?.value
+                    ? Number(taskAssignee.value)
+                    : null
         };
 
         if (saveTaskButton) {
             saveTaskButton.disabled = true;
-            saveTaskButton.textContent = taskId ? "Saving changes..." : "Saving...";
+            saveTaskButton.textContent = "Saving...";
         }
 
         try {
-            const path = taskId ? `/tasks/${encodeURIComponent(taskId)}` : "/tasks";
-
-            await apiRequest(path, {
-                method: taskId ? "PUT" : "POST",
-                body: JSON.stringify(taskData)
-            });
+            await apiRequest(
+                taskId
+                    ? `/tasks/${encodeURIComponent(taskId)}`
+                    : "/tasks",
+                {
+                    method: taskId ? "PUT" : "POST",
+                    body: JSON.stringify(data)
+                }
+            );
 
             taskDialog.close();
             resetTaskForm();
+
             await loadDashboard();
         } catch (error) {
-            showTaskError(`Could not save the task: ${error.message}`);
+            showTaskError("Could not save task: " + error.message);
         } finally {
             if (saveTaskButton) {
                 saveTaskButton.disabled = false;
@@ -1282,17 +886,20 @@ async function loadDashboard() {
         const tasks = await apiRequest("/tasks");
 
         if (!Array.isArray(tasks)) {
-            throw new Error("Unexpected tasks response from server.");
+            throw new Error("Unexpected tasks response.");
         }
 
         kanbanTasks = tasks;
+
+        const errorBox = document.getElementById("boardErrorMessage");
+        errorBox?.remove();
+
         renderKanbanBoard();
         renderStatusChart();
 
-        await loadCreatedTeams();
         await loadKanbanAnalytics();
     } catch (error) {
-        console.error("Could not load tasks:", error);
+        console.error(error);
         showBoardMessage("Could not load tasks: " + error.message);
     }
 }
@@ -1307,7 +914,8 @@ function showBoardMessage(message) {
         box = document.createElement("p");
         box.id = "boardErrorMessage";
         box.className = "message error";
-        board.parentElement.insertBefore(box, board);
+
+        board.parentElement?.insertBefore(box, board);
     }
 
     box.textContent = message;
@@ -1318,13 +926,21 @@ function renderKanbanBoard() {
         document.getElementById(id)?.replaceChildren();
     });
 
-    const totals = { BACKLOG: 0, DOING: 0, REVIEW: 0, DONE: 0 };
+    const totals = {
+        BACKLOG: 0,
+        DOING: 0,
+        REVIEW: 0,
+        DONE: 0
+    };
 
     kanbanTasks.forEach(task => {
         const list = document.getElementById(columns[task.status]);
         if (!list) return;
 
-        if (Object.hasOwn(totals, task.status)) totals[task.status]++;
+        if (Object.hasOwn(totals, task.status)) {
+            totals[task.status]++;
+        }
+
         renderTaskCard(task, list);
     });
 
@@ -1337,10 +953,6 @@ function renderKanbanBoard() {
     setText("statReview", totals.REVIEW);
     setText("statDone", totals.DONE);
 }
-
-// =====================================================
-// TASK CARDS AND STATUS ACTIONS
-// =====================================================
 
 function renderTaskCard(task, list) {
     const card = document.createElement("article");
@@ -1355,53 +967,280 @@ function renderTaskCard(task, list) {
     const details = document.createElement("div");
     details.className = "task-card-details";
 
-    addText(details, "span", `Priority: ${task.priority || "MEDIUM"}`);
-    addText(details, "span", task.teamName ? `Team: ${task.teamName}` : "Team not assigned");
     addText(
         details,
         "span",
-        getTaskAssigneeName(task) ? `Assigned: ${getTaskAssigneeName(task)}` : "Unassigned"
+        `Priority: ${task.priority || "MEDIUM"}`
     );
 
-    if (task.dueDate) addText(details, "span", `Due: ${task.dueDate}`);
+    addText(
+        details,
+        "span",
+        `Assigned: ${assigneeName(task) || "Unassigned"}`
+    );
+
+    if (task.dueDate) {
+        addText(details, "span", `Due: ${task.dueDate}`);
+    }
+
     card.appendChild(details);
+
+    // Show whether evidence has been submitted.
+    if (task.status === "REVIEW" || task.status === "DONE") {
+        const evidenceStatus = task.evidence
+            ? "Evidence submitted"
+            : "No evidence recorded";
+
+        addText(
+            card,
+            "p",
+            evidenceStatus,
+            task.evidence ? "evidence-status" : "muted"
+        );
+    }
 
     const actions = document.createElement("div");
     actions.className = "task-card-actions";
 
-    addActionButton(actions, "Edit", () => editTask(task));
-
-    if (task.status === "BACKLOG") {
-        addActionButton(actions, "Start task", () => changeTaskStatus(task.id, "DOING"));
+    if (isFaculty() || isAssignedMember(task)) {
+        addButton(actions, "Edit", () => editTask(task));
     }
 
-    if (task.status === "DOING") {
-        addActionButton(actions, "Submit for review", () => changeTaskStatus(task.id, "REVIEW"));
+    if (isAssignedMember(task) && task.status === "BACKLOG") {
+        addButton(
+            actions,
+            "Start task",
+            () => changeTaskStatus(task.id, "DOING")
+        );
     }
 
-    if (task.status === "REVIEW") {
-        if (isFaculty()) {
-            addActionButton(actions, "Review task", () => openReviewDialog(task), "btn btn-primary");
-        }
-
-        addActionButton(actions, "Return to Doing", () => changeTaskStatus(task.id, "DOING"));
+    // IMPORTANT:
+    // Do not move a task directly from DOING to REVIEW.
+    // The member must submit evidence first.
+    if (isAssignedMember(task) && task.status === "DOING") {
+        addButton(
+            actions,
+            "Submit for Review",
+            () => openEvidenceDialog(task),
+            "btn btn-primary"
+        );
     }
 
-    card.appendChild(actions);
+    // Evidence remains available to the member while the task is in review.
+    if (
+        isAssignedMember(task) &&
+        (task.status === "REVIEW" || task.status === "DONE") &&
+        task.evidence
+    ) {
+        addButton(
+            actions,
+            "View submitted evidence",
+            () => viewMemberEvidence(task)
+        );
+    }
+
+    if (isFaculty() && task.status === "REVIEW") {
+        addButton(
+            actions,
+            "Review task",
+            () => openReviewDialog(task),
+            "btn btn-primary"
+        );
+    }
+
+    if (actions.childElementCount) {
+        card.appendChild(actions);
+    }
+
     list.appendChild(card);
 }
 
-async function changeTaskStatus(taskId, status) {
+async function changeTaskStatus(id, status) {
     try {
-        await apiRequest(`/tasks/${encodeURIComponent(taskId)}/status`, {
-            method: "PATCH",
-            body: JSON.stringify({ status })
-        });
+        await apiRequest(
+            `/tasks/${encodeURIComponent(id)}/status`,
+            {
+                method: "PATCH",
+                body: JSON.stringify({ status })
+            }
+        );
 
         await loadDashboard();
     } catch (error) {
-        window.alert("Could not change the task status: " + error.message);
+        alert("Could not change task status: " + error.message);
     }
+}
+
+// =====================================================
+// MEMBER EVIDENCE SUBMISSION
+// =====================================================
+
+const evidenceDialog = document.getElementById("evidenceDialog");
+const evidenceForm = document.getElementById("evidenceForm");
+const closeEvidenceDialog =
+    document.getElementById("closeEvidenceDialog");
+const cancelEvidenceButton =
+    document.getElementById("cancelEvidenceButton");
+const evidenceFormError =
+    document.getElementById("evidenceFormError");
+const submitEvidenceButton =
+    document.getElementById("submitEvidenceButton");
+
+let activeEvidenceTask = null;
+
+function openEvidenceDialog(task) {
+    if (!isAssignedMember(task)) {
+        alert("Only the member assigned to this task can submit evidence.");
+        return;
+    }
+
+    if (task.status !== "DOING") {
+        alert("Only tasks in Doing can be submitted for review.");
+        return;
+    }
+
+    if (!evidenceDialog || !evidenceForm) {
+        alert("The evidence submission dialog was not found.");
+        return;
+    }
+
+    activeEvidenceTask = task;
+
+    const taskId = document.getElementById("evidenceTaskId");
+    const evidenceInput = document.getElementById("taskEvidence");
+
+    if (taskId) taskId.value = task.id;
+
+    setText("evidenceTaskTitle", task.title || "Untitled task");
+
+    // If a previous submission exists, prefill it for editing.
+    if (evidenceInput) {
+        evidenceInput.value = task.evidence || "";
+    }
+
+    showMessage(evidenceFormError, "");
+
+    if (submitEvidenceButton) {
+        submitEvidenceButton.disabled = false;
+        submitEvidenceButton.textContent = "Submit for Review";
+    }
+
+    evidenceDialog.showModal();
+}
+
+function closeEvidenceSubmissionDialog() {
+    evidenceDialog?.close();
+}
+
+if (closeEvidenceDialog) {
+    closeEvidenceDialog.addEventListener(
+        "click",
+        closeEvidenceSubmissionDialog
+    );
+}
+
+if (cancelEvidenceButton) {
+    cancelEvidenceButton.addEventListener(
+        "click",
+        closeEvidenceSubmissionDialog
+    );
+}
+
+if (evidenceForm) {
+    evidenceForm.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        showMessage(evidenceFormError, "");
+
+        const id =
+            document.getElementById("evidenceTaskId")?.value || "";
+
+        const evidence =
+            document.getElementById("taskEvidence")?.value.trim() || "";
+
+        if (!id) {
+            showMessage(evidenceFormError, "Task ID is missing.");
+            return;
+        }
+
+        if (!evidence) {
+            showMessage(
+                evidenceFormError,
+                "Please enter your evidence before submitting."
+            );
+            return;
+        }
+
+        if (evidence.length > 5000) {
+            showMessage(
+                evidenceFormError,
+                "Evidence cannot exceed 5000 characters."
+            );
+            return;
+        }
+
+        const task = kanbanTasks.find(
+            item => String(item.id) === String(id)
+        );
+
+        if (!task || !isAssignedMember(task)) {
+            showMessage(
+                evidenceFormError,
+                "You are not assigned to this task."
+            );
+            return;
+        }
+
+        if (task.status !== "DOING") {
+            showMessage(
+                evidenceFormError,
+                "This task is no longer in Doing. Refresh the board and try again."
+            );
+            return;
+        }
+
+        if (submitEvidenceButton) {
+            submitEvidenceButton.disabled = true;
+            submitEvidenceButton.textContent = "Submitting...";
+        }
+
+        try {
+            // The backend saves the evidence and moves the task to REVIEW.
+            await apiRequest(
+                `/tasks/${encodeURIComponent(id)}/submit-review`,
+                {
+                    method: "POST",
+                    body: JSON.stringify({ evidence })
+                }
+            );
+
+            evidenceDialog?.close();
+
+            await loadDashboard();
+
+            alert(
+                "Evidence submitted successfully. Your task is now waiting for Faculty review."
+            );
+        } catch (error) {
+            showMessage(
+                evidenceFormError,
+                "Could not submit evidence: " + error.message
+            );
+        } finally {
+            if (submitEvidenceButton) {
+                submitEvidenceButton.disabled = false;
+                submitEvidenceButton.textContent = "Submit for Review";
+            }
+        }
+    });
+}
+
+function viewMemberEvidence(task) {
+    const evidence = task.evidence || "No evidence has been submitted.";
+
+    alert(
+        `Evidence for: ${task.title || "Task"}\n\n${evidence}`
+    );
 }
 
 // =====================================================
@@ -1411,63 +1250,112 @@ async function changeTaskStatus(taskId, status) {
 const reviewDialog = document.getElementById("reviewDialog");
 const reviewForm = document.getElementById("reviewForm");
 const closeReviewDialog = document.getElementById("closeReviewDialog");
-const requestChangesButton = document.getElementById("requestChangesButton");
+const requestChangesButton =
+    document.getElementById("requestChangesButton");
 
 function openReviewDialog(task) {
     if (!isFaculty()) {
-        window.alert("Only Faculty can review and approve tasks.");
+        alert("Only Faculty can review tasks.");
+        return;
+    }
+
+    if (task.status !== "REVIEW") {
+        alert("Only tasks waiting for review can be reviewed.");
         return;
     }
 
     if (!reviewDialog) {
-        window.alert("Review dialog was not found.");
+        alert("Review dialog was not found.");
         return;
     }
 
-    const taskIdInput = document.getElementById("reviewTaskId");
-    const commentInput = document.getElementById("reviewComment");
+    const id = document.getElementById("reviewTaskId");
+    const comment = document.getElementById("reviewComment");
+    const evidenceDisplay = document.getElementById("reviewEvidence");
 
-    if (taskIdInput) taskIdInput.value = task.id;
-    if (commentInput) commentInput.value = "";
+    if (id) id.value = task.id;
+    if (comment) comment.value = "";
 
-    setText("reviewTaskTitle", task.title);
+    setText("reviewTaskTitle", task.title || "Untitled task");
+
+    // Use textContent, not innerHTML, to display member-submitted text safely.
+    if (evidenceDisplay) {
+        evidenceDisplay.textContent =
+            task.evidence?.trim() ||
+            "No evidence was submitted for this task.";
+    }
+
     reviewDialog.showModal();
 }
 
 if (closeReviewDialog && reviewDialog) {
-    closeReviewDialog.addEventListener("click", () => reviewDialog.close());
+    closeReviewDialog.addEventListener("click", () => {
+        reviewDialog.close();
+    });
 }
 
 async function submitTaskReview(decision) {
     if (!isFaculty()) {
-        window.alert("Only Faculty can review and approve tasks.");
+        alert("Only Faculty can review tasks.");
         return;
     }
 
-    const taskId = document.getElementById("reviewTaskId")?.value || "";
-    const comment = document.getElementById("reviewComment")?.value.trim() || "";
+    const id =
+        document.getElementById("reviewTaskId")?.value || "";
 
-    if (!taskId) {
-        window.alert("Task ID is missing.");
+    const comment =
+        document.getElementById("reviewComment")?.value.trim() || "";
+
+    if (!id) {
+        alert("Task ID is missing.");
         return;
     }
+
+    if (decision === "CHANGES" && !comment) {
+        alert("Enter a comment explaining what changes are required.");
+        document.getElementById("reviewComment")?.focus();
+        return;
+    }
+
+    const task = kanbanTasks.find(
+        item => String(item.id) === String(id)
+    );
+
+    if (!task || task.status !== "REVIEW") {
+        alert("This task is no longer waiting for review. Refresh the board.");
+        return;
+    }
+
+    const approveButton = reviewForm?.querySelector(
+        'button[type="submit"]'
+    );
+
+    if (approveButton) approveButton.disabled = true;
+    if (requestChangesButton) requestChangesButton.disabled = true;
 
     try {
-        await apiRequest(`/tasks/${encodeURIComponent(taskId)}/review`, {
-            method: "POST",
-            body: JSON.stringify({ decision, comment })
-        });
+        await apiRequest(
+            `/tasks/${encodeURIComponent(id)}/review`,
+            {
+                method: "POST",
+                body: JSON.stringify({ decision, comment })
+            }
+        );
 
         reviewDialog?.close();
+
         await loadDashboard();
 
-        window.alert(
+        alert(
             decision === "APPROVE"
                 ? "Task approved and moved to Done."
-                : "Changes requested. Task moved back to Doing."
+                : "Changes requested. The task has been returned to Doing."
         );
     } catch (error) {
-        window.alert("Review failed: " + error.message);
+        alert("Review failed: " + error.message);
+    } finally {
+        if (approveButton) approveButton.disabled = false;
+        if (requestChangesButton) requestChangesButton.disabled = false;
     }
 }
 
@@ -1499,7 +1387,11 @@ async function loadKanbanAnalytics() {
 
         setText("overdueTasks", data.overdueTasks ?? 0);
         setText("throughput", data.throughput30Days ?? 0);
-        setText("completionRate", `${data.completionRate ?? 0}%`);
+
+        setText(
+            "completionRate",
+            `${data.completionRate ?? 0}%`
+        );
 
         setText(
             "cycleTime",
@@ -1519,16 +1411,21 @@ async function loadKanbanAnalytics() {
         const reviewBar = document.getElementById("reviewBar");
 
         if (wipBar) {
-            wipBar.style.width = `${total ? Math.min(100, wip / total * 100) : 0}%`;
+            wipBar.style.width =
+                `${total ? Math.min(100, wip / total * 100) : 0}%`;
         }
 
         if (reviewBar) {
-            reviewBar.style.width = `${total ? Math.min(100, review / total * 100) : 0}%`;
+            reviewBar.style.width =
+                `${total ? Math.min(100, review / total * 100) : 0}%`;
         }
 
         renderStatusChart();
     } catch (error) {
-        console.warn("Analytics could not be loaded:", error.message);
+        console.warn(
+            "Analytics could not be loaded:",
+            error.message
+        );
     }
 }
 
@@ -1538,13 +1435,20 @@ function renderStatusChart() {
 
     chart.replaceChildren();
 
-    const counts = { BACKLOG: 0, DOING: 0, REVIEW: 0, DONE: 0 };
+    const counts = {
+        BACKLOG: 0,
+        DOING: 0,
+        REVIEW: 0,
+        DONE: 0
+    };
 
     kanbanTasks.forEach(task => {
-        if (Object.hasOwn(counts, task.status)) counts[task.status]++;
+        if (Object.hasOwn(counts, task.status)) {
+            counts[task.status]++;
+        }
     });
 
-    const maximum = Math.max(1, ...Object.values(counts));
+    const max = Math.max(1, ...Object.values(counts));
 
     Object.entries(counts).forEach(([status, count]) => {
         const row = document.createElement("div");
@@ -1557,41 +1461,37 @@ function renderStatusChart() {
 
         const fill = document.createElement("div");
         fill.className = "progress-fill";
-        fill.style.width = `${count / maximum * 100}%`;
+        fill.style.width = `${count / max * 100}%`;
 
         track.appendChild(fill);
         row.appendChild(track);
+
         addText(row, "strong", count);
+
         chart.appendChild(row);
     });
 }
 
 // =====================================================
-// REFRESH BUTTONS
+// REFRESH AND INITIALIZATION
 // =====================================================
 
 const refreshButton = document.getElementById("refreshButton");
-if (refreshButton) refreshButton.addEventListener("click", loadDashboard);
+
+if (refreshButton) {
+    refreshButton.addEventListener("click", loadDashboard);
+}
 
 const analyticsRefresh = document.getElementById("analyticsRefresh");
+
 if (analyticsRefresh) {
     analyticsRefresh.addEventListener("click", loadDashboard);
 }
 
-// =====================================================
-// INITIALIZE DASHBOARD
-// =====================================================
-
 if (boardPage) {
     (async () => {
-        const userLoaded = await loadCurrentUser();
-
-        if (!userLoaded) return;
+        if (!await loadCurrentUser()) return;
 
         await loadDashboard();
-
-        if (isAdmin() || isMember()) {
-            await loadTeamAssignmentOptions();
-        }
     })();
 }

@@ -39,12 +39,11 @@ public class KanbanTask {
     @JoinColumn(name = "created_by_id", nullable = false)
     private AppUser createdBy;
 
-    // Team to which this task belongs
-    // Nullable to preserve existing tasks without a team
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "team_id")
-    private Team team;
+    // Task evidence submitted by the member
+    @Column(columnDefinition = "TEXT")
+    private String evidence;
 
+    // Task timestamps
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime firstStartedAt;
@@ -89,7 +88,7 @@ public class KanbanTask {
         this.description = description;
     }
 
-    // Task status
+    // Status
     public TaskStatus getStatus() {
         return status;
     }
@@ -134,16 +133,16 @@ public class KanbanTask {
         this.createdBy = createdBy;
     }
 
-    // Team relationship
-    public Team getTeam() {
-        return team;
+    // Task evidence
+    public String getEvidence() {
+        return evidence;
     }
 
-    public void setTeam(Team team) {
-        this.team = team;
+    public void setEvidence(String evidence) {
+        this.evidence = evidence;
     }
 
-    // Timestamps
+    // Created timestamp
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -152,6 +151,7 @@ public class KanbanTask {
         this.createdAt = createdAt;
     }
 
+    // Updated timestamp
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
@@ -160,6 +160,7 @@ public class KanbanTask {
         this.updatedAt = updatedAt;
     }
 
+    // First time task started
     public LocalDateTime getFirstStartedAt() {
         return firstStartedAt;
     }
@@ -168,6 +169,7 @@ public class KanbanTask {
         this.firstStartedAt = firstStartedAt;
     }
 
+    // Task submitted for review
     public LocalDateTime getSubmittedAt() {
         return submittedAt;
     }
@@ -176,6 +178,7 @@ public class KanbanTask {
         this.submittedAt = submittedAt;
     }
 
+    // Task completion timestamp
     public LocalDateTime getCompletedAt() {
         return completedAt;
     }
